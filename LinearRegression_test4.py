@@ -50,11 +50,71 @@ def ridgeTest(xArr,yArr):
 		wMat[i,:] = ws.T
 	return wMat
 
-if __name__ == '__main__':
-	abX,abY = loadDataSet('abalone.txt')
-	ridgeWeights = ridgeTest(abX,abY)
+def rssError(yArr,yHatArr):
+	return ((yArr-yHatArr)**2).sum()
 
-	fig = plt.figure()
-	ax = fig.add_subplot(111)
-	ax.plot(ridgeWeights)
-	plt.show()
+def regularize(xMat):
+	inMat = xMat.copy()
+	inMeans = np.mean(inMat,0)
+	inVar = np.var(inMat,0)
+	inMat = (inMat - inMeans)/inVar
+	return inMat
+
+def stageWise(xArr,yArr,eps=0.01,numIt=100):
+	xMat = np.mat(xArr)
+	yMat = np.mat(yArr).T
+	yMean = np.mean(yMat,0)
+	yMat = yMat - yMean
+	xMat = regularize(xMat)
+	m,n = np.shape(xMat)
+	returnMat = np.zeros((numIt,n))
+	ws = np.zeros((n,1))
+	wsTest = ws.copy()
+	wsMax = ws.copy()
+	for i in range(numIt):
+		print(ws.T)
+		lowestError = np.inf
+		for j in range(n):
+			for sign in [-1,1]:
+				wsTest = ws.copy()
+				wsTest[j] += eps*sign
+				yTest = xMat*wsTest
+				rssE = rssError(yMat.A,yTest.A)
+				if rssE < lowestError:
+					lowestError = rssE
+					wsMax = wsTest
+		ws = wsMax.copy()
+		returnMat[i,:] = ws.T
+	return returnMat
+
+def standRegres(xArr,yArr):
+	xMat = np.mat(xArr)
+	yMat = np.mat(yArr).T
+	xTx = xMat.T*xMat
+	if np.linalg.det(xTx) == 0.0:
+		print('This matrix is singular, cannot do inverse')
+		return
+	ws = xTx.I * (xMat.T*yMat)
+	return ws
+
+if __name__ == '__main__':
+	# abX,abY = loadDataSet('abalone.txt')
+	# ridgeWeights = ridgeTest(abX,abY)
+	#
+	# fig = plt.figure()
+	# ax = fig.add_subplot(111)
+	# ax.plot(ridgeWeights)
+	# plt.show()
+
+	xArr,yArr = loadDataSet('abalone.txt')
+	# print(stageWise(xArr,yArr,0.01,200))
+
+	print(stageWise(xArr,yArr,0.001,5000))
+
+	xMat = np.mat(xArr)
+	yMat = np.mat(yArr).T
+	xMat = regularize(xMat)
+	yMean = np.mean(yMat,0)
+	yMat = yMat - yMean
+	weights = standRegres(xMat,yMat.T)
+	print(weights.T)
